@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 class MLP:
-    def __init__(self, layers = [13, 100, 100, 2], activation: str='sigmoid'):
+    def __init__(self, layers=[13, 100, 100, 1], activation: str='sigmoid'):
         self.layers = layers
         self.weights = []
         self.biases = []
@@ -19,10 +19,9 @@ class MLP:
         self.beta2 = 0.999
         self.epsilon = 1e-8
         self.t = 0
-
-        for i in range(len(layers) - 1):
-            weight = np.random.randn(layers[i], layers[i + 1]) * np.sqrt(2. / layers[i])
-            bias = np.zeros((1, layers[i + 1]))
+        for i in range(len(self.layers) - 1):
+            weight = np.random.randn(self.layers[i], self.layers[i + 1]) * np.sqrt(2. / self.layers[i])
+            bias = np.zeros((1, self.layers[i + 1]))
             self.weights.append(weight)
             self.biases.append(bias)
             self.m_w.append(np.zeros_like(weight))
@@ -31,11 +30,11 @@ class MLP:
             self.v_b.append(np.zeros_like(bias))
 
     def parseActivation(self, activation: str):
-        if(activation == 'sigmoid'):
+        if activation == 'sigmoid':
             return self.sigmoid, self.sigmoid_derivative
-        elif(activation == 'relu'):
+        elif activation == 'relu':
             return self.relu, self.relu_derivative
-        elif(activation == 'tanh'):
+        elif activation == 'tanh':
             return self.tanh, self.tanh_derivative
         else:
             print('Error: activation function not found. Using sigmoid as default.')
@@ -44,7 +43,6 @@ class MLP:
     def forward(self, X):
         self.a = [X]
         self.z = []
-
         for i in range(len(self.weights) - 1):
             z = np.dot(self.a[-1], self.weights[i]) + self.biases[i]
             self.z.append(z)
@@ -53,9 +51,8 @@ class MLP:
 
         z = np.dot(self.a[-1], self.weights[-1]) + self.biases[-1]
         self.z.append(z)
-        a = self.softmax(z)
+        a = self.sigmoid(z)
         self.a.append(a)
-
         return a
 
     def backward(self, y, learning_rate):
@@ -75,7 +72,9 @@ class MLP:
 
             self.update_params(dw, db, i, learning_rate)
 
+
     def update_params(self, dw, db, index, learning_rate):
+        print(f'Updating params for layer {index}: dw shape: {dw.shape}, db shape: {db.shape}')
         self.m_w[index] = self.beta1 * self.m_w[index] + (1 - self.beta1) * dw
         self.v_w[index] = self.beta2 * self.v_w[index] + (1 - self.beta2) * (dw ** 2)
         self.m_b[index] = self.beta1 * self.m_b[index] + (1 - self.beta1) * db
@@ -85,9 +84,11 @@ class MLP:
         v_w_hat = self.v_w[index] / (1 - self.beta2 ** self.t)
         m_b_hat = self.m_b[index] / (1 - self.beta1 ** self.t)
         v_b_hat = self.v_b[index] / (1 - self.beta2 ** self.t)
-
+        print(self.v_w[index].shape)
+        print(f'Updating weights and biases for layer {index}: weight shape: {self.weights[index].shape}, bias shape: {self.biases[index].shape}')
         self.weights[index] -= learning_rate * m_w_hat / (np.sqrt(v_w_hat) + self.epsilon)
         self.biases[index] -= learning_rate * m_b_hat / (np.sqrt(v_b_hat) + self.epsilon)
+
 
     def fit(self, X, y, X_test, Y_test, epochs, learning_rate, patience=10):
         best_loss = np.inf
@@ -101,9 +102,9 @@ class MLP:
             y_test_pred = self.forward(X_test)
             test_loss = self.binary_cross_entropy(Y_test, y_test_pred)
             self.loss_history.append(loss)
-            self.accuracy_history.append(np.mean(np.argmax(y_pred, axis=1) == np.argmax(y, axis=1)))
+            self.accuracy_history.append(np.mean((y_pred > 0.5) == y))
             self.test_loss_history.append(test_loss)
-            self.test_accuracy_history.append(np.mean(np.argmax(y_test_pred, axis=1) == np.argmax(Y_test, axis=1)))
+            self.test_accuracy_history.append(np.mean((y_test_pred > 0.5) == Y_test))
 
             if test_loss < best_loss:
                 best_loss = test_loss
@@ -116,11 +117,11 @@ class MLP:
                 break
             
             if epoch % 10 == 0:
-                print(f'Epoch {epoch}/{epochs} - Loss: {loss:.4f} - Val_loss: {test_loss:.4f} - Accuracy: {self.accuracy_history[epoch] * 100:.2f} ')
+                print(f'Epoch {epoch}/{epochs} - Loss: {loss:.4f} - Val_loss: {test_loss:.4f} - Accuracy: {self.accuracy_history[epoch] * 100:.2f}% ')
 
     def predict(self, X):
         y_pred = self.forward(X)
-        return np.argmax(y_pred, axis=1)
+        return (y_pred > 0.5).astype(int)
     
     def visualize(self):
         plt.figure(1)
@@ -155,11 +156,7 @@ class MLP:
     def tanh_derivative(self, x):
         return 1 - np.tanh(x) ** 2
     
-    def softmax(self, x):
-        exp_x = np.exp(x - np.max(x, axis=-1, keepdims=True))
-        return exp_x / np.sum(exp_x, axis=-1, keepdims=True)
-
     def binary_cross_entropy(self, y_true, y_pred):
         epsilon = 1e-15
         y_pred = np.clip(y_pred, epsilon, 1 - epsilon)
-        return -np.mean(np.sum(y_true * np.log(y_pred), axis=1))
+        return -np.mean(y_true * np.log(y_pred) + (1 - y_true) * np.log(1 - y_pred))

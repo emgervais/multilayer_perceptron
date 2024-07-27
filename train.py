@@ -17,12 +17,11 @@ def extractData():
 def main():
     
     X_train, y_train, X_test, y_test = extractData()
+    # onehot_encoder = OneHotEncoder(sparse_output=False)
+    # y_train = onehot_encoder.fit_transform(y_train.reshape(-1, 1))
+    # y_test = onehot_encoder.fit_transform(y_test.reshape(-1, 1))
 
-    onehot_encoder = OneHotEncoder(sparse_output=False)
-    y_train = onehot_encoder.fit_transform(y_train.reshape(-1, 1))
-    y_test = onehot_encoder.fit_transform(y_test.reshape(-1, 1))
-
-    model = MLP(layers=[X_train.shape[1], 100, 100, 2], activation='relu')
+    model = MLP(layers=[X_train.shape[1], 16, 16, 1], activation='relu')
     model.fit(X_train, y_train, X_test, y_test, epochs=1000, learning_rate=0.0001)
     joblib.dump(model, 'mlp_model.pkl')
 
