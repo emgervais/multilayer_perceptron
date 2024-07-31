@@ -43,16 +43,13 @@ class MLP:
 
     def forward(self, X):
         self.a = [X]
-        self.z = []
 
         for i in range(len(self.weights) - 1):
             z = np.dot(self.a[-1], self.weights[i]) + self.biases[i]
-            self.z.append(z)
             a = self.activation(z)
             self.a.append(a)
 
         z = np.dot(self.a[-1], self.weights[-1]) + self.biases[-1]
-        self.z.append(z)
         a = self.softmax(z)
         self.a.append(a)
 
@@ -72,7 +69,6 @@ class MLP:
             dz = np.dot(dz, self.weights[i + 1].T) * self.derivative(self.a[i + 1])
             dw = np.dot(self.a[i].T, dz) / m
             db = np.sum(dz, axis=0, keepdims=True) / m
-
             self.update_params(dw, db, i, learning_rate)
 
     def update_params(self, dw, db, index, learning_rate):
